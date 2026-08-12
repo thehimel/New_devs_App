@@ -3,7 +3,7 @@ import { SecureAPI } from '../lib/secureApi';
 
 interface RevenueData {
     property_id: string;
-    total_revenue: number;
+    total_revenue: string | number;
     currency: string;
     reservations_count: number;
 }
@@ -12,6 +12,32 @@ interface RevenueSummaryProps {
     propertyId?: string;
     debugTenant?: string; 
     showRaw?: boolean;
+}
+
+/** Format money from a string/number without float Math.round. */
+function formatMoney(amount: string | number): string {
+    const raw = String(amount).trim();
+    const negative = raw.startsWith('-');
+    const unsigned = negative ? raw.slice(1) : raw;
+    const [wholePart, fracPart = ''] = unsigned.split('.');
+    const whole = wholePart.replace(/^0+(?=\d)/, '') || '0';
+
+    // Round half-up to 2 decimal places using digits only
+    const digits = (fracPart + '00').split('').map((d) => parseInt(d, 10) || 0);
+    let carry = 0;
+    if ((digits[2] ?? 0) >= 5) {
+        carry = 1;
+    }
+    let cents = digits[0] * 10 + digits[1] + carry;
+    let wholeNumber = BigInt(whole);
+    if (cents >= 100) {
+        wholeNumber += 1n;
+        cents -= 100;
+    }
+
+    const wholeFormatted = wholeNumber.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const centsFormatted = cents.toString().padStart(2, '0');
+    return `${negative ? '-' : ''}${wholeFormatted}.${centsFormatted}`;
 }
 
 export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'prop-001', debugTenant, showRaw }) => {
@@ -61,7 +87,7 @@ export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'pr
     if (error) return <div className="p-4 text-red-500 bg-red-50 rounded-lg">{error}</div>;
     if (!data) return null;
 
-    const displayTotal = Math.round(data.total_revenue * 100) / 100;
+    const displayTotal = formatMoney(data.total_revenue);
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-300">
@@ -78,7 +104,7 @@ export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'pr
                         <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Revenue</h2>
                         <div className="flex items-baseline gap-2 mt-1">
                             <span className="text-3xl font-bold text-gray-900 tracking-tight">
-                                {data.currency} {displayTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {data.currency} {displayTotal}
                             </span>
                             {/* Fake trend indicator for premium feel */}
                             <span className="inline-flex items-baseline px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 md:mt-2 lg:mt-0">
@@ -100,18 +126,6 @@ export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'pr
                         <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Reservations</p>
                         <p className="text-sm font-semibold text-gray-700 mt-1">{data.reservations_count} <span className="font-normal text-gray-400">bookings</span></p>
                     </div>
-                </div>
-
-                {/* Precision Warning Area */}
-                <div className="mt-4 h-6">
-                    {Math.abs(data.total_revenue - displayTotal) > 0.000001 && showRaw && (
-                        <div className="flex items-center text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                            <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            Precision Mismatch Detected
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
