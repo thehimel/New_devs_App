@@ -1,5 +1,11 @@
 # Developer Assignment: Property Revenue Dashboard
 
+## Solution
+
+Solution is saved in the [solution](solution) directory.
+
+> I will send the link to Loom Video in the email.
+
 ## Background
 
 You've joined our property management team as a junior developer. Our company manages properties for multiple clients across different time zones, and we've recently launched a new revenue dashboard system.
